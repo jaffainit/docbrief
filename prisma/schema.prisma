@@ -1,14 +1,14 @@
-// DocBrief — SQLite locally; switch provider to "postgresql" + set DATABASE_URL
-// (and optional DIRECT_URL) for Neon/Postgres deploy. All field types are
-// Postgres-ready (no SQLite-only types).
+// DocBrief — Postgres (Neon) for production; local can still use a Postgres URL.
+// Field types are Postgres-ready.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {

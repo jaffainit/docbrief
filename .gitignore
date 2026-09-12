@@ -48,3 +48,5 @@ next-env.d.ts
 /dev.db
 *.db
 *.db-journal
+.stripe_prices.json
+.neon_claim.json

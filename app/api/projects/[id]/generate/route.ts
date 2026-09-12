@@ -5,9 +5,39 @@ import { prisma } from "@/lib/db";
 import { CREDITS_PER_RENDER } from "@/lib/plans";
 import { runGenerate } from "@/lib/generate";
 import { publicUploadUrl } from "@/lib/paths";
+import { blobEnabled, putLocalFile } from "@/lib/blob";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
+
+function contentTypeFor(filename: string): string {
+  const ext = path.extname(filename).toLowerCase();
+  const types: Record<string, string> = {
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav",
+    ".mp4": "video/mp4",
+    ".zip": "application/zip",
+    ".png": "image/png",
+    ".md": "text/markdown; charset=utf-8",
+  };
+  return types[ext] || "application/octet-stream";
+}
+
+async function durableUrl(
+  projectId: string,
+  localPath: string | null,
+): Promise<string | null> {
+  if (!localPath) return null;
+  const base = path.basename(localPath);
+  if (blobEnabled()) {
+    return putLocalFile(
+      `docbrief/${projectId}/${base}`,
+      localPath,
+      contentTypeFor(base),
+    );
+  }
+  return publicUploadUrl(projectId, base);
+}
 
 export async function POST(
   _req: Request,
@@ -46,15 +76,11 @@ export async function POST(
   try {
     const result = await runGenerate({ projectId: id, brief: project.brief });
 
-    const audioUrl = result.audioPath
-      ? publicUploadUrl(id, path.basename(result.audioPath))
-      : null;
-    const videoUrl = result.videoPath
-      ? publicUploadUrl(id, path.basename(result.videoPath))
-      : null;
-    const zipUrl = result.zipPath
-      ? publicUploadUrl(id, path.basename(result.zipPath))
-      : null;
+    const [audioUrl, videoUrl, zipUrl] = await Promise.all([
+      durableUrl(id, result.audioPath),
+      durableUrl(id, result.videoPath),
+      durableUrl(id, result.zipPath),
+    ]);
 
     const [updatedProject] = await prisma.$transaction([
       prisma.project.update({

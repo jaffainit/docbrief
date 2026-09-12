@@ -4,6 +4,7 @@ import path from "path";
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { projectDir } from "@/lib/paths";
+import { isRemoteUrl } from "@/lib/blob";
 
 const ALLOWED = new Set([
   "script.md",
@@ -38,6 +39,16 @@ export async function GET(
   const base = path.basename(file);
   if (!ALLOWED.has(base) && !/^still-\d+\.png$/.test(base)) {
     return NextResponse.json({ error: "File not allowed" }, { status: 400 });
+  }
+
+  // Prefer durable Blob URLs stored on the project when local FS is gone.
+  const remoteCandidates = [project.videoUrl, project.audioUrl, project.zipUrl].filter(
+    (u): u is string => Boolean(u && isRemoteUrl(u)),
+  );
+  for (const remote of remoteCandidates) {
+    if (remote.includes(encodeURIComponent(base)) || remote.endsWith("/" + base) || remote.includes("/" + base)) {
+      return NextResponse.redirect(remote);
+    }
   }
 
   const full = path.join(projectDir(id), base);
