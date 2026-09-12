@@ -14,6 +14,7 @@ Paste a topic or rough script → polished voiceover script + TTS (when configur
 - New project: brief → generate with **cost/credits shown before generate**
 - Project result: script preview, **MP4 primary download**, optional asset zip
 - Billing + Stripe Checkout (wired; 503 + config notice when keys missing — **no stub free upgrade**)
+- Webhook credit sync: `checkout.session.completed` + `invoice.paid` set plan credits (Starter 10 / Creator 40); cancel returns Free (1)
 - Generate pipeline:
   1. Polish script with OpenAI if `OPENAI_API_KEY`, else template polish
   2. TTS via OpenAI audio/speech if key, else a **beep + silence** placeholder track (MP4 still succeeds)

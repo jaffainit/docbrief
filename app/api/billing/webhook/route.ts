@@ -6,13 +6,20 @@ import { creditsForPlan } from "@/lib/plans";
 
 export const runtime = "nodejs";
 
-function planFromMeta(
-  status: Stripe.Subscription.Status,
-  metaPlan?: string | null,
-): "free" | "starter" | "creator" {
-  if (status !== "active" && status !== "trialing") return "free";
-  if (metaPlan === "creator") return "creator";
-  return "starter";
+
+function planFromPriceId(priceId?: string | null): "starter" | "creator" | null {
+  if (!priceId) return null;
+  if (priceId === process.env.STRIPE_PRICE_ID_CREATOR) return "creator";
+  if (priceId === process.env.STRIPE_PRICE_ID_STARTER) return "starter";
+  return null;
+}
+
+function planFromSubscription(subscription: Stripe.Subscription): "free" | "starter" | "creator" {
+  if (subscription.status !== "active" && subscription.status !== "trialing") return "free";
+  const meta = subscription.metadata?.plan;
+  if (meta === "creator" || meta === "starter") return meta;
+  const priceId = subscription.items?.data?.[0]?.price?.id;
+  return planFromPriceId(priceId) || "starter";
 }
 
 async function resolveUserId(opts: {
@@ -95,7 +102,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   });
   if (!userId) return;
 
-  const plan = planFromMeta(subscription.status, subscription.metadata?.plan);
+  const plan = planFromSubscription(subscription);
   await prisma.user.update({
     where: { id: userId },
     data: {
@@ -104,6 +111,51 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       stripeStatus: subscription.status,
       ...(customerId ? { stripeCustomerId: customerId } : {}),
       stripeSubscriptionId: plan === "free" ? null : subscription.id,
+    },
+  });
+}
+
+
+async function handleInvoicePaid(invoice: Stripe.Invoice) {
+  // Stripe API versions differ: subscription may be top-level or under parent.
+  const inv = invoice as Stripe.Invoice & {
+    subscription?: string | { id: string } | null;
+    parent?: { subscription_details?: { subscription?: string | { id: string } | null } | null } | null;
+  };
+  const subRef =
+    inv.subscription ??
+    inv.parent?.subscription_details?.subscription ??
+    null;
+  const subscriptionId =
+    typeof subRef === "string" ? subRef : subRef?.id ?? null;
+  const customerId =
+    typeof invoice.customer === "string"
+      ? invoice.customer
+      : invoice.customer?.id ?? null;
+  if (!subscriptionId && !customerId) return;
+
+  const stripe = getStripe();
+  if (!stripe || !subscriptionId) return;
+
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const userId = await resolveUserId({
+    userId: subscription.metadata?.userId ?? null,
+    customerId,
+    subscriptionId,
+  });
+  if (!userId) return;
+
+  const plan = planFromSubscription(subscription);
+  if (plan === "free") return;
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      plan,
+      credits: creditsForPlan(plan),
+      stripeStatus: subscription.status,
+      stripeSubscriptionId: subscription.id,
+      ...(customerId ? { stripeCustomerId: customerId } : {}),
     },
   });
 }
@@ -176,6 +228,9 @@ export async function POST(request: Request) {
         break;
       case "customer.subscription.deleted":
         await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+        break;
+      case "invoice.paid":
+        await handleInvoicePaid(event.data.object as Stripe.Invoice);
         break;
       default:
         break;
