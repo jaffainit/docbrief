@@ -2,7 +2,7 @@
 
 A **WedgeWerks™** product (Stripe statement descriptor: `WEDGEWERKS TM`).
 
-Production: https://docbrief.wedgewerks.win (also https://docbrief-peach.vercel.app).
+Production: https://docbrief.wedgewerks.win (canonical). `www.docbrief.wedgewerks.win` and `docbrief-peach.vercel.app` permanently redirect here.
 
 Short YouTube documentaries for faceless / solo creators — without an editor or GPU film studio.
 

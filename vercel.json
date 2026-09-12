@@ -4,5 +4,29 @@
       "maxDuration": 120,
       "memory": 1024
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.docbrief.wedgewerks.win"
+        }
+      ],
+      "destination": "https://docbrief.wedgewerks.win/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "docbrief-peach.vercel.app"
+        }
+      ],
+      "destination": "https://docbrief.wedgewerks.win/:path*",
+      "permanent": true
+    }
+  ]
 }
