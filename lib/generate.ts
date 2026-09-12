@@ -54,28 +54,84 @@ function templatePolish(brief: string): string {
 ${trimmed.slice(0, 280)}${trimmed.length > 280 ? "…" : ""}
 
 ## Act 1 — Setup
-We open on the core question behind this brief. The viewer needs context fast: who cares, why now, and what is at stake.
+We open on the core question behind this brief. The viewer needs context fast: who cares, why now, and what is at stake — staying inside the same topic and industry the brief names.
 
 ## Act 2 — Evidence
-Walk through the strongest beats from the brief. Prefer concrete numbers, named places, and one surprising contrast. Keep each beat under two sentences for voiceover pacing.
+Walk through the strongest beats from the brief itself. Prefer concrete details the brief already gives. Keep each beat under two sentences for voiceover pacing. Do not invent a different industry.
 
 ## Act 3 — Payoff
-Return to the hook with a clearer answer. Leave the viewer with one memorable takeaway they can repeat.
+Return to the hook with a clearer answer in the brief's own domain. Leave the viewer with one memorable takeaway they can repeat.
 
 ## Closing
 Thanks for watching. If this topic matters to you, the full sources belong in the description — DocBrief does not invent citations.
 
 ---
-*Polished by DocBrief template (set OPENAI_API_KEY for model polish).*
+*Polished by DocBrief template (stays close to your brief).*
 `;
 }
 
-async function openaiPolish(brief: string): Promise<string | null> {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) {
-    console.warn("[docbrief] OPENAI_API_KEY missing — template polish");
-    return null;
+/** Domains the model sometimes invents when it misreads product metaphors. */
+const DRIFT_TERMS = [
+  "warehouse",
+  "warehouses",
+  "freight",
+  "cargo",
+  "shipping lane",
+  "shipping lanes",
+  "container ship",
+  "container ships",
+  "logistics hub",
+  "logistics hubs",
+  "supply chain",
+  "supply-chain",
+  "loading dock",
+  "loading docks",
+  "pallet",
+  "pallets",
+  "forklift",
+  "forklifts",
+  "seaport",
+  "seaports",
+  "ocean freight",
+  "truck fleet",
+  "trucking company",
+];
+
+function normalizeForMatch(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9\s-]/g, " ");
+}
+
+/** True when polished script invents logistics/freight scenery the brief never asked for. */
+function scriptDriftsFromBrief(brief: string, polished: string): boolean {
+  const b = normalizeForMatch(brief);
+  const p = normalizeForMatch(polished);
+  const invented: string[] = [];
+  for (const term of DRIFT_TERMS) {
+    if (p.includes(term) && !b.includes(term)) invented.push(term);
   }
+  // Soft product/startup brief signals — if present, inventing logistics is almost always drift
+  const productish =
+    /\b(saas|startup|software|app|platform|api|code|developer|product|wedge|b2b|mvp|founder)\b/.test(
+      b,
+    );
+  if (invented.length >= 2) return true;
+  if (productish && invented.length >= 1) return true;
+  return false;
+}
+
+const POLISH_SYSTEM =
+  "You are DocBrief, a documentary script polisher for faceless YouTube creators. Rewrite the user's rough brief into a clear short-documentary voiceover script in Markdown with Hook / Act 1 / Act 2 / Act 3 / Closing. Keep it under ~650 words. Do not invent fake sources. No multi-character dialogue casting.\n\nGROUNDING (critical): Stay strictly on the user's brief topic, industry, and domain. If the brief is about software, startups, products, SaaS, wedges, platforms, or builders, keep that domain — do NOT reinterpret product/startup metaphors as literal logistics, shipping, freight, warehouses, cargo, trucks, ports, or supply-chain operations unless the brief is actually about those. Figurative language ('wedge', 'ship it', 'pipeline', 'freight' as metaphor) must stay figurative in the brief's real industry. Prefer the brief's own nouns and verbs over inventing a new setting.";
+
+const STRICT_POLISH_SYSTEM =
+  "You are DocBrief. Rewrite ONLY the user's brief into a short documentary voiceover in Markdown (Hook / Act 1 / Act 2 / Act 3 / Closing), under ~650 words. FAIL CLOSED ON DOMAIN: every act must use the same industry and subject as the brief. Do not introduce warehouses, freight, shipping lanes, cargo, ports, trucks, logistics hubs, or supply-chain scenery unless those words appear as literal topics in the brief. If the brief uses startup/product metaphors, keep the script in that product/startup domain. Do not invent fake sources. Quote or paraphrase the brief's own terms heavily.";
+
+async function callOpenAiPolish(
+  brief: string,
+  system: string,
+  temperature: number,
+): Promise<string | null> {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return null;
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -85,18 +141,14 @@ async function openaiPolish(brief: string): Promise<string | null> {
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        temperature: 0.6,
+        temperature,
         max_tokens: 1800,
         messages: [
-          {
-            role: "system",
-            content:
-              "You are DocBrief, a documentary script polisher for faceless YouTube creators. Rewrite the user's rough brief into a clear short-documentary voiceover script in Markdown with Hook / Act 1 / Act 2 / Act 3 / Closing. Keep it under ~650 words. Do not invent fake sources. No multi-character dialogue casting.",
-          },
+          { role: "system", content: system },
           {
             role: "user",
             content:
-              "Polish this brief into a narrated documentary voiceover script:\n\n" +
+              "Polish this brief into a narrated documentary voiceover script. Stay in the brief's real industry — do not invent a different setting:\n\n" +
               brief.slice(0, 6000),
           },
         ],
@@ -119,14 +171,46 @@ async function openaiPolish(brief: string): Promise<string | null> {
       console.warn("[docbrief] openaiPolish empty/short response");
       return null;
     }
-    return (
-      text +
-      "\n\n---\n\n*Polished by DocBrief · gpt-4o-mini.*"
-    );
+    return text;
   } catch (err) {
     console.warn("[docbrief] openaiPolish error", err);
     return null;
   }
+}
+
+/**
+ * Polish with OpenAI, ground-check for industry drift, retry once stricter,
+ * then fail closed to templatePolish (prefer correct domain over wrong film).
+ */
+async function openaiPolish(brief: string): Promise<string | null> {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) {
+    console.warn("[docbrief] OPENAI_API_KEY missing — template polish");
+    return null;
+  }
+
+  const first = await callOpenAiPolish(brief, POLISH_SYSTEM, 0.55);
+  if (!first) return null;
+
+  if (!scriptDriftsFromBrief(brief, first)) {
+    return first + "\n\n---\n\n*Polished by DocBrief · gpt-4o-mini.*";
+  }
+
+  console.warn(
+    "[docbrief] openaiPolish drift detected — retrying with stricter grounding",
+  );
+  const retry = await callOpenAiPolish(brief, STRICT_POLISH_SYSTEM, 0.2);
+  if (retry && !scriptDriftsFromBrief(brief, retry)) {
+    return (
+      retry +
+      "\n\n---\n\n*Polished by DocBrief · gpt-4o-mini (grounded retry).*"
+    );
+  }
+
+  console.warn(
+    "[docbrief] openaiPolish still drifted — failing closed to templatePolish",
+  );
+  return null;
 }
 
 async function openaiTts(text: string, outPath: string): Promise<boolean> {

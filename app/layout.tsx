@@ -57,7 +57,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Nav />
         <main className="flex-1">{children}</main>
         <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-400">
-          A WedgeWerks™ product · DocBrief
+          <p>A WedgeWerks™ product · DocBrief</p>
+          <p className="mt-2 space-x-3">
+            <a href="/privacy" className="hover:text-slate-600 hover:underline">
+              Privacy
+            </a>
+            <span aria-hidden="true">·</span>
+            <a href="/terms" className="hover:text-slate-600 hover:underline">
+              Terms
+            </a>
+          </p>
         </footer>
       </body>
     </html>

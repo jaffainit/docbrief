@@ -17,9 +17,8 @@ export default async function HomePage() {
           Long-form YouTube documentaries without an editor or GPU film studio.
         </h1>
         <p className="mt-5 max-w-xl text-lg text-slate-600">
-          Faceless and solo creators: paste a topic or rough script. DocBrief polishes the
-          voiceover, adds TTS (when configured), B-roll placeholders, burned-in captions, and a
-          downloadable MP4. A zip of assets is secondary — zip-only only if ffmpeg fails hard.
+          Paste a topic or rough script. DocBrief polishes a voiceover, adds narration, captions,
+          and B-roll placeholders, then gives you a downloadable short documentary MP4.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
@@ -35,9 +34,6 @@ export default async function HomePage() {
             See pricing
           </Link>
         </div>
-        <p className="mt-4 text-sm text-slate-500">
-          No character-consistent multi-cast GPU. No Seedance/Kling. No YouTube OAuth publish.
-        </p>
       </section>
 
       <section className="border-y border-slate-200 bg-white">
@@ -45,15 +41,15 @@ export default async function HomePage() {
           {[
             {
               t: "Brief → polished script",
-              d: "OpenAI polish when OPENAI_API_KEY is set; otherwise a clear template structure from your brief.",
+              d: "Turn a rough topic into a clear Hook / Acts / Closing voiceover that stays on your industry and story.",
             },
             {
-              t: "Voice + burned-in captions + stills",
-              d: "TTS voiceover (or honest beep-track placeholder), SRT/VTT plus captions burned into the MP4, and labeled B-roll placeholder PNGs.",
+              t: "Voice + captions + stills",
+              d: "Narration, timed captions burned into the frame, and labeled B-roll placeholders ready to swap for your footage.",
             },
             {
               t: "Downloadable MP4",
-              d: "Slideshow of stills + audio + burned-in captions. Asset zip is a secondary download. Zip-only if ffmpeg is unavailable.",
+              d: "Export a short documentary cut you can review, edit further, or upload — plus an asset pack of script and captions.",
             },
           ].map((f) => (
             <div key={f.t}>
@@ -116,6 +112,18 @@ export default async function HomePage() {
               </Link>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 bg-slate-50">
+        <div className="mx-auto max-w-5xl px-4 py-10">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Status
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-slate-600">
+            DocBrief ships polished scripts, narration, captions, and slideshow MP4s for faceless
+            creators. It is not a multi-cast GPU film studio and does not publish to YouTube for you.
+          </p>
         </div>
       </section>
     </div>
