@@ -19,7 +19,7 @@ export function getFontFile(): string | null {
   let src: string | null = null;
   for (const c of candidates()) {
     try {
-      if (fs.existsSync(c)) {
+      if (fs.existsSync(/*turbopackIgnore: true*/ c)) {
         src = c;
         break;
       }
@@ -39,10 +39,17 @@ export function getFontFile(): string | null {
   const destDir = path.join(os.tmpdir(), "docbrief-fonts");
   const dest = path.join(destDir, FONT_NAME);
   try {
-    if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
-    const srcStat = fs.statSync(src);
-    if (!(fs.existsSync(dest) && fs.statSync(dest).size === srcStat.size)) {
-      fs.copyFileSync(src, dest);
+    if (!fs.existsSync(/*turbopackIgnore: true*/ destDir)) {
+      fs.mkdirSync(/*turbopackIgnore: true*/ destDir, { recursive: true });
+    }
+    const srcStat = fs.statSync(/*turbopackIgnore: true*/ src);
+    if (
+      !(
+        fs.existsSync(/*turbopackIgnore: true*/ dest) &&
+        fs.statSync(/*turbopackIgnore: true*/ dest).size === srcStat.size
+      )
+    ) {
+      fs.copyFileSync(/*turbopackIgnore: true*/ src, /*turbopackIgnore: true*/ dest);
     }
     return dest;
   } catch {
