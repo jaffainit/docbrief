@@ -16,7 +16,7 @@ Paste a topic or rough script → polished voiceover script + TTS (when configur
 - Billing + Stripe Checkout (wired; 503 + config notice when keys missing — **no stub free upgrade**)
 - Webhook credit sync: `checkout.session.completed` + `invoice.paid` set plan credits (Starter 10 / Creator 40); cancel returns Free (1)
 - Generate pipeline:
-  1. Polish script with OpenAI if `OPENAI_API_KEY`, else template polish
+  1. Polish/expand brief into narrated script with OpenAI `gpt-4o-mini` if `OPENAI_API_KEY`, else template polish (fallback logged)
   2. TTS via OpenAI audio/speech if key, else a **beep + silence** placeholder track (MP4 still succeeds)
   3. 3–5 B-roll placeholder PNGs (gradient + caption via `sharp`)
   4. Captions `.srt` / `.vtt` from script sentences

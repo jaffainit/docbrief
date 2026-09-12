@@ -72,7 +72,10 @@ Thanks for watching. If this topic matters to you, the full sources belong in th
 
 async function openaiPolish(brief: string): Promise<string | null> {
   const key = process.env.OPENAI_API_KEY;
-  if (!key) return null;
+  if (!key) {
+    console.warn("[docbrief] OPENAI_API_KEY missing — template polish");
+    return null;
+  }
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -83,23 +86,45 @@ async function openaiPolish(brief: string): Promise<string | null> {
       body: JSON.stringify({
         model: "gpt-4o-mini",
         temperature: 0.6,
+        max_tokens: 1800,
         messages: [
           {
             role: "system",
             content:
               "You are DocBrief, a documentary script polisher for faceless YouTube creators. Rewrite the user's rough brief into a clear short-documentary voiceover script in Markdown with Hook / Act 1 / Act 2 / Act 3 / Closing. Keep it under ~650 words. Do not invent fake sources. No multi-character dialogue casting.",
           },
-          { role: "user", content: brief },
+          {
+            role: "user",
+            content:
+              "Polish this brief into a narrated documentary voiceover script:\n\n" +
+              brief.slice(0, 6000),
+          },
         ],
       }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      console.warn(
+        "[docbrief] openaiPolish failed",
+        res.status,
+        errBody.slice(0, 200),
+      );
+      return null;
+    }
     const data = (await res.json()) as {
       choices?: { message?: { content?: string } }[];
     };
     const text = data.choices?.[0]?.message?.content?.trim();
-    return text || null;
-  } catch {
+    if (!text || text.length < 80) {
+      console.warn("[docbrief] openaiPolish empty/short response");
+      return null;
+    }
+    return (
+      text +
+      "\n\n---\n\n*Polished by DocBrief · gpt-4o-mini.*"
+    );
+  } catch (err) {
+    console.warn("[docbrief] openaiPolish error", err);
     return null;
   }
 }
@@ -289,8 +314,10 @@ export async function runGenerate(opts: {
   brief: string;
 }): Promise<GenerateResult> {
   const dir = projectDir(opts.projectId);
-  const polished =
-    (await openaiPolish(opts.brief)) || templatePolish(opts.brief);
+  const openaiScript = await openaiPolish(opts.brief);
+  const polishSource = openaiScript ? "openai" : "template";
+  const polished = openaiScript || templatePolish(opts.brief);
+  console.info("[docbrief] script polish:", polishSource);
   const scriptPath = path.join(dir, "script.md");
   fs.writeFileSync(scriptPath, polished, "utf8");
 
