@@ -61,6 +61,9 @@ Copy `.env.example` to `.env` / `.env.local`:
 
 ### Postgres / Neon
 
+**Durable storage (verified):** production uses Neon Postgres for users/projects/credits and Vercel Blob for MP4/audio/zip. Build runs `prisma migrate deploy`. Ephemeral `/tmp` SQLite is not used.
+
+
 1. `prisma/schema.prisma` `datasource.db.provider` is `"postgresql"`
 2. `directUrl = env("DIRECT_URL")` for migrations
 3. Set `DATABASE_URL` (and `DIRECT_URL`) to your Neon/Postgres URLs
