@@ -46,6 +46,10 @@ export function BillingClient({
         </div>
       )}
       {error && <p className="text-sm text-red-600">{error}</p>}
+      <p className="text-xs text-slate-500">
+        Card statements show <span className="font-medium text-slate-600">WEDGEWERKS TM</span> (ASCII).
+        UI branding: WedgeWerks™.
+      </p>
       <div className="flex flex-wrap gap-3">
         <button
           type="button"

@@ -1,6 +1,6 @@
 # DocBrief
 
-A **WedgeWerks™** product.
+A **WedgeWerks™** product (Stripe statement descriptor: `WEDGEWERKS TM`).
 
 Short YouTube documentaries for faceless / solo creators — without an editor or GPU film studio.
 
