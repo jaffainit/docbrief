@@ -2,10 +2,16 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { VerifyEmailBanner } from "@/components/VerifyEmailBanner";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ verified?: string }>;
+}) {
   const user = await getSessionUser();
   if (!user) redirect("/sign-in");
+  const sp = await searchParams;
 
   const projects = await prisma.project.findMany({
     where: { userId: user.id },
@@ -14,6 +20,12 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">
+      {sp.verified === "1" && (
+        <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          Email confirmed — your free render credit is unlocked.
+        </div>
+      )}
+      {!user.emailVerifiedAt && <VerifyEmailBanner productNoun="render" />}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Projects</h1>

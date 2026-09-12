@@ -116,3 +116,7 @@ Writes a real `docbrief.mp4` under `uploads/smoke-local/` and exits non-zero if 
 Private / product code for WedgeWerks™ · DocBrief.
 
 Liberation Sans is SIL Open Font License 1.1 — see `assets/fonts/LICENSE`.
+
+## Email verification
+
+New free signups start with **0 credits** until they confirm email. Verify link: `{NEXT_PUBLIC_APP_URL}/api/auth/verify?token=…` (friendly `/verify` page also works). Set `RESEND_API_KEY` and optionally `EMAIL_FROM` / `NEXT_PUBLIC_APP_URL` on Vercel. Existing users are grandfathered (`emailVerifiedAt = createdAt` in migration).

@@ -11,11 +11,13 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [signupNotice, setSignupNotice] = useState("");
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setSignupNotice("");
     const res = await fetch(mode === "signup" ? "/api/auth/signup" : "/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -25,6 +27,18 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
     setLoading(false);
     if (!res.ok) {
       setError(data.error || "Something went wrong");
+      return;
+    }
+    if (mode === "signup" && data.emailVerification?.required) {
+      setSignupNotice(
+        data.emailVerification.emailed === false
+          ? "Check your email to confirm before using your free credit. (Email delivery not configured — contact support if you did not receive a message.)"
+          : "Check your email to confirm before using your free credit.",
+      );
+      setTimeout(() => {
+        router.push("/dashboard");
+        router.refresh();
+      }, 1800);
       return;
     }
     router.push("/dashboard");
@@ -42,7 +56,7 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
         </h1>
         <p className="mt-1 text-sm text-slate-500">
           {mode === "signup"
-            ? "Email + password (min 8 characters). Free plan includes 1 short render."
+            ? "Email + password (min 8 characters). Confirm email to unlock 1 free render."
             : "Sign in with your email and password."}
         </p>
       </div>
@@ -83,6 +97,7 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
         />
       </label>
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {signupNotice && <p className="text-sm text-indigo-700">{signupNotice}</p>}
       <button
         type="submit"
         disabled={loading}

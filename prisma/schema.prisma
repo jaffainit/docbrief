@@ -18,6 +18,9 @@ model User {
   name                 String?
   plan                 String    @default("free") // free | starter | creator
   credits              Int       @default(1)
+  emailVerifiedAt      DateTime?
+  emailVerifyToken     String?   @unique
+  emailVerifyExpires   DateTime?
   stripeCustomerId     String?
   stripeSubscriptionId String?
   stripeStatus         String? // active | trialing | canceled | past_due | …

@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { ensureDb, prisma } from "@/lib/db";
 import { setSession } from "@/lib/auth";
-import { creditsForPlan } from "@/lib/plans";
-import { sendWelcomeEmail } from "@/lib/email";
+import { createVerifyToken, sendVerifyEmail, sendWelcomeEmail } from "@/lib/email";
 
 const BCRYPT_COST = 12;
 
@@ -42,23 +41,27 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, user: { id: user.id, email: user.email } });
   }
 
+  const { token, expires } = createVerifyToken();
   const user = await prisma.user.create({
     data: {
       email,
       name,
       passwordHash,
       plan: "free",
-      credits: creditsForPlan("free"),
+      credits: 0, // granted on email verify
+      emailVerifyToken: token,
+      emailVerifyExpires: expires,
     },
   });
   await setSession(user.id);
 
-  // Fire-and-forget style: await so we can report stub status, never fail signup.
-  const welcome = await sendWelcomeEmail({ to: user.email, name: user.name });
+  const verify = await sendVerifyEmail({ to: user.email, name: user.name, token });
+  // Optional welcome (non-blocking for unlock — verify is what matters)
+  await sendWelcomeEmail({ to: user.email, name: user.name }).catch(() => null);
 
   return NextResponse.json({
     ok: true,
     user: { id: user.id, email: user.email },
-    welcomeEmail: welcome,
+    emailVerification: { required: true, emailed: verify.sent },
   });
 }

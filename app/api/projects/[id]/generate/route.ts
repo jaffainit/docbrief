@@ -45,6 +45,12 @@ export async function POST(
 ) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user.emailVerifiedAt) {
+    return NextResponse.json(
+      { error: "Confirm your email first", code: "EMAIL_UNVERIFIED" },
+      { status: 403 },
+    );
+  }
   const { id } = await ctx.params;
 
   const project = await prisma.project.findFirst({

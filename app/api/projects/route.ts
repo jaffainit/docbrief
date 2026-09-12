@@ -15,6 +15,12 @@ export async function GET() {
 export async function POST(req: Request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user.emailVerifiedAt) {
+    return NextResponse.json(
+      { error: "Confirm your email first", code: "EMAIL_UNVERIFIED" },
+      { status: 403 },
+    );
+  }
   const body = await req.json().catch(() => ({}));
   const brief = String(body.brief || "").trim();
   const title =
