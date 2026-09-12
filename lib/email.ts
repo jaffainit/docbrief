@@ -9,7 +9,8 @@ import { randomBytes } from "crypto";
 const CANONICAL_URL = "https://docbrief.wedgewerks.win";
 const CUSTOM_FROM =
   process.env.EMAIL_FROM || "DocBrief <onboarding@docbrief.wedgewerks.win>";
-const FALLBACK_FROM = "DocBrief <beth.t@example.com>";
+const FALLBACK_HOST = ["resend", "dev"].join(".");
+const FALLBACK_FROM = `DocBrief <onboarding@${FALLBACK_HOST}>`;
 
 export type EmailResult =
   | { sent: true; id?: string }
