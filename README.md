@@ -2,6 +2,8 @@
 
 A **WedgeWerks™** product (Stripe statement descriptor: `WEDGEWERKS TM`).
 
+Production: https://docbrief.wedgewerks.win (also https://docbrief-peach.vercel.app).
+
 Short YouTube documentaries for faceless / solo creators — without an editor or GPU film studio.
 
 Paste a topic or rough script → polished voiceover script + TTS (when configured) + B-roll placeholder stills + **burned-in captions** → downloadable **MP4**. A zip of source assets is a secondary download. Zip-only happens only if ffmpeg is completely unavailable.
