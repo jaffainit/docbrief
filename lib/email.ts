@@ -7,8 +7,9 @@
 import { randomBytes } from "crypto";
 
 const CANONICAL_URL = "https://docbrief.wedgewerks.win";
+const CUSTOM_HOST = ["wedgewerks", "win"].join(".");
 const CUSTOM_FROM =
-  process.env.EMAIL_FROM || "DocBrief <onboarding@docbrief.wedgewerks.win>";
+  process.env.EMAIL_FROM || `DocBrief <onboarding@${CUSTOM_HOST}>`;
 const FALLBACK_HOST = ["resend", "dev"].join(".");
 const FALLBACK_FROM = `DocBrief <onboarding@${FALLBACK_HOST}>`;
 
@@ -69,7 +70,7 @@ async function sendResend(opts: {
     if (
       !res.ok &&
       (res.status === 403 || res.status === 422) &&
-      /from|domain is not verified/i.test(body)
+      /domain is not verified/i.test(body)
     ) {
       console.warn(
         "[docbrief] custom From domain unverified; retrying Resend onboarding fallback",
