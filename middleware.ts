@@ -12,6 +12,12 @@ export function middleware(req: NextRequest) {
   const host = req.headers.get("host")?.split(":")[0]?.toLowerCase() || "";
   if (!REDIRECT_HOSTS.has(host)) return NextResponse.next();
 
+  // 308 drops POST bodies — never redirect Stripe/billing webhooks off the alias.
+  const path = req.nextUrl.pathname;
+  if (path.startsWith("/api/billing/") || path.startsWith("/api/stripe")) {
+    return NextResponse.next();
+  }
+
   const url = req.nextUrl.clone();
   url.protocol = "https:";
   url.host = CANONICAL;

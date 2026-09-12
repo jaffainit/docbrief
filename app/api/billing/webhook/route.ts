@@ -83,6 +83,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       plan,
       credits: creditsForPlan(plan),
       stripeStatus: "active",
+      emailVerifiedAt: new Date(),
       ...(customerId ? { stripeCustomerId: customerId } : {}),
       ...(subscriptionId ? { stripeSubscriptionId: subscriptionId } : {}),
     },

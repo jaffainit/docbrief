@@ -1,19 +1,12 @@
 import { NextResponse } from "next/server";
 import { ensureDb, prisma } from "@/lib/db";
-
-function appUrl(req: Request): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.APP_URL ||
-    new URL(req.url).origin
-  ).replace(/\/$/, "");
-}
+import { appUrl } from "@/lib/email";
 
 export async function GET(req: Request) {
   await ensureDb();
   const url = new URL(req.url);
   const token = String(url.searchParams.get("token") || "").trim();
-  const base = appUrl(req);
+  const base = appUrl();
 
   if (!token) {
     return NextResponse.redirect(`${base}/verify?error=missing`);

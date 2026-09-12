@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { getStripe, stripeConfigured, priceIdForPlan } from "@/lib/stripe";
 import { prisma } from "@/lib/db";
+import { appUrl } from "@/lib/email";
 
 export async function POST(req: Request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const origin = new URL(req.url).origin;
+  const origin = appUrl();
   const body = await req.json().catch(() => ({}));
   const plan = String(body.plan || "starter") as "starter" | "creator";
   if (plan !== "starter" && plan !== "creator") {

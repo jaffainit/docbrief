@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
+import { appUrl } from "@/lib/email";
 
-export async function POST(req: Request) {
+export async function POST() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const origin = new URL(req.url).origin;
+  const origin = appUrl();
   const stripe = getStripe()!;
   const session = await stripe.billingPortal.sessions.create({
     customer: user.stripeCustomerId,

@@ -33,6 +33,7 @@ export async function POST(req: Request) {
         plan,
         credits: creditsForPlan(plan),
         stripeStatus: "active",
+        emailVerifiedAt: new Date(),
         ...(customerId ? { stripeCustomerId: customerId } : {}),
         ...(subscriptionId ? { stripeSubscriptionId: subscriptionId } : {}),
       },
