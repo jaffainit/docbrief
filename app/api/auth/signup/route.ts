@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { ensureDb, prisma } from "@/lib/db";
 import { setSession } from "@/lib/auth";
 import { creditsForPlan } from "@/lib/plans";
+import { sendWelcomeEmail } from "@/lib/email";
 
 const BCRYPT_COST = 12;
 
@@ -51,5 +52,13 @@ export async function POST(req: Request) {
     },
   });
   await setSession(user.id);
-  return NextResponse.json({ ok: true, user: { id: user.id, email: user.email } });
+
+  // Fire-and-forget style: await so we can report stub status, never fail signup.
+  const welcome = await sendWelcomeEmail({ to: user.email, name: user.name });
+
+  return NextResponse.json({
+    ok: true,
+    user: { id: user.id, email: user.email },
+    welcomeEmail: welcome,
+  });
 }
