@@ -9,7 +9,10 @@ export async function getSessionUser() {
   const jar = await cookies();
   const uid = jar.get(COOKIE)?.value;
   if (!uid) return null;
-  return prisma.user.findUnique({ where: { id: uid } });
+  const user = await prisma.user.findUnique({ where: { id: uid } });
+  // Password auth only — reject cookie sessions for users without a hash.
+  if (!user?.passwordHash) return null;
+  return user;
 }
 
 export async function requireUser() {
@@ -24,6 +27,7 @@ export async function setSession(userId: string) {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
+    secure: process.env.NODE_ENV === "production",
     maxAge: 60 * 60 * 24 * MAX_AGE_DAYS,
   });
 }

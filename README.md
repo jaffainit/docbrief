@@ -9,7 +9,7 @@ Paste a topic or rough script → polished voiceover script + TTS (when configur
 ## What works
 
 - Landing + pricing: **Free** (1 short render), **Starter $12/mo** (10 credits), **Creator $36/mo** (40 credits)
-- Email + bcrypt password auth; httpOnly session cookie (`docbrief_uid`)
+- Email + bcrypt password auth (min 8 chars); httpOnly session cookie (`docbrief_uid`, `Secure` in production); sessions require `passwordHash`
 - Dashboard of projects
 - New project: brief → generate with **cost/credits shown before generate**
 - Project result: script preview, **MP4 primary download**, optional asset zip
