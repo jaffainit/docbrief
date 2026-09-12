@@ -9,7 +9,7 @@ export const PLANS = {
       "Polished script + captions",
       "TTS or silent audio placeholder",
       "B-roll still placeholders",
-      "MP4 when ffmpeg available, else asset zip",
+      "Downloadable MP4 (stills + audio + burned-in captions)",
     ],
   },
   starter: {

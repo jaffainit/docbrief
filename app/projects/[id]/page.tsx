@@ -60,7 +60,7 @@ export default async function ProjectPage({
             href={project.zipUrl}
             className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50"
           >
-            Download asset zip
+            {project.videoUrl ? "Also download assets (zip)" : "Download asset zip"}
           </a>
         )}
         {project.audioUrl && (

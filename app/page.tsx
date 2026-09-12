@@ -18,8 +18,8 @@ export default async function HomePage() {
         </h1>
         <p className="mt-5 max-w-xl text-lg text-slate-600">
           Faceless and solo creators: paste a topic or rough script. DocBrief polishes the
-          voiceover, adds TTS (when configured), B-roll placeholders, captions, and a downloadable
-          MP4 — or an honest zip of assets if render is blocked.
+          voiceover, adds TTS (when configured), B-roll placeholders, burned-in captions, and a
+          downloadable MP4. A zip of assets is secondary — zip-only only if ffmpeg fails hard.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
@@ -48,12 +48,12 @@ export default async function HomePage() {
               d: "OpenAI polish when OPENAI_API_KEY is set; otherwise a clear template structure from your brief.",
             },
             {
-              t: "Voice + captions + stills",
-              d: "TTS voiceover (or silent placeholder), SRT/VTT captions, and labeled B-roll placeholder PNGs.",
+              t: "Voice + burned-in captions + stills",
+              d: "TTS voiceover (or honest beep-track placeholder), SRT/VTT plus captions burned into the MP4, and labeled B-roll placeholder PNGs.",
             },
             {
-              t: "MP4 or honest zip",
-              d: "Mux with ffmpeg when available; otherwise download script + audio + stills + captions as a zip.",
+              t: "Downloadable MP4",
+              d: "Slideshow of stills + audio + burned-in captions. Asset zip is a secondary download. Zip-only if ffmpeg is unavailable.",
             },
           ].map((f) => (
             <div key={f.t}>

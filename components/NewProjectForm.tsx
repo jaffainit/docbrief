@@ -70,7 +70,7 @@ export function NewProjectForm({ credits }: { credits: number }) {
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
           value={brief}
           onChange={(e) => setBrief(e.target.value)}
-          placeholder="Topic, beats, facts, tone… DocBrief will polish into a voiceover script, add captions, placeholder B-roll stills, and TTS when OPENAI_API_KEY is set."
+          placeholder="Topic, beats, facts, tone… DocBrief will polish a voiceover script, add TTS (or a beep track), B-roll stills, burned-in captions, and a downloadable MP4."
         />
       </label>
       {error && <p className="text-sm text-red-600">{error}</p>}

@@ -4,7 +4,7 @@ A **WedgeWerks™** product.
 
 Short YouTube documentaries for faceless / solo creators — without an editor or GPU film studio.
 
-Paste a topic or rough script → polished voiceover script + TTS (when configured) + B-roll placeholder stills + captions → downloadable **MP4** or an honest **zip of assets** if render is blocked.
+Paste a topic or rough script → polished voiceover script + TTS (when configured) + B-roll placeholder stills + **burned-in captions** → downloadable **MP4**. A zip of source assets is a secondary download. Zip-only happens only if ffmpeg is completely unavailable.
 
 ## What works
 
@@ -12,15 +12,16 @@ Paste a topic or rough script → polished voiceover script + TTS (when configur
 - Email + bcrypt password auth; httpOnly session cookie (`docbrief_uid`)
 - Dashboard of projects
 - New project: brief → generate with **cost/credits shown before generate**
-- Project result: script preview, MP4 and/or zip download
+- Project result: script preview, **MP4 primary download**, optional asset zip
 - Billing + Stripe Checkout (wired; 503 + config notice when keys missing — **no stub free upgrade**)
 - Generate pipeline:
   1. Polish script with OpenAI if `OPENAI_API_KEY`, else template polish
-  2. TTS via OpenAI audio/speech if key, else silent placeholder WAV noted in zip
+  2. TTS via OpenAI audio/speech if key, else a **beep + silence** placeholder track (MP4 still succeeds)
   3. 3–5 B-roll placeholder PNGs (gradient + caption via `sharp`)
   4. Captions `.srt` / `.vtt` from script sentences
-  5. Mux MP4 with ffmpeg (`@ffmpeg-installer/ffmpeg`) when available; else zip assets + honesty note in UI/README
-  6. Deduct credits; Free users limited
+  5. Mux **MP4** with ffmpeg (`@ffmpeg-installer/ffmpeg`, copied to `/tmp` on Vercel — VecClip pattern): slideshow of stills + audio + **burned-in captions** (libass `subtitles` filter, Liberation Sans; drawtext / sharp-composited stills as fallback)
+  6. Zip of assets is **secondary**. Zip-only only if ffmpeg is missing or every mux attempt fails.
+  7. Deduct credits; Free users limited
 
 ## What we intentionally do not build
 
@@ -33,9 +34,11 @@ Paste a topic or rough script → polished voiceover script + TTS (when configur
 ## Stack
 
 - Next.js App Router + TypeScript + Tailwind CSS v4
-- Prisma (SQLite locally; schema is Postgres-ready — switch `provider` + `DATABASE_URL`)
+- Prisma + Neon Postgres
 - Stripe Checkout
+- Vercel Blob for durable MP4 / audio / zip
 - bcryptjs, sharp, jszip, `@ffmpeg-installer/ffmpeg`
+- Bundled Liberation Sans (SIL OFL) for caption burn
 - Bun preferred (`npm` / `pnpm` fine)
 
 ## Env vars
@@ -44,8 +47,10 @@ Copy `.env.example` to `.env` / `.env.local`:
 
 | Var | Required | Notes |
 |-----|----------|-------|
-| `DATABASE_URL` | yes | Local default: `file:./dev.db` |
-| `OPENAI_API_KEY` | no | Script polish + TTS; without it, template + silent WAV |
+| `DATABASE_URL` | yes | Neon pooled URL in prod |
+| `DIRECT_URL` | yes (Prisma migrate) | Neon direct URL |
+| `OPENAI_API_KEY` | no | Script polish + TTS; without it, template + beep track + captions still yield an MP4 |
+| `BLOB_READ_WRITE_TOKEN` | prod | Durable MP4/audio/zip on Vercel |
 | `STRIPE_SECRET_KEY` | for live billing | |
 | `STRIPE_PRICE_ID_STARTER` | for live billing | $12/mo Price id |
 | `STRIPE_PRICE_ID_CREATOR` | for live billing | $36/mo Price id |
@@ -55,17 +60,17 @@ Copy `.env.example` to `.env` / `.env.local`:
 
 ### Postgres / Neon
 
-1. Change `prisma/schema.prisma` `datasource.db.provider` to `"postgresql"`
-2. Optionally add `directUrl = env("DIRECT_URL")` for migrations
+1. `prisma/schema.prisma` `datasource.db.provider` is `"postgresql"`
+2. `directUrl = env("DIRECT_URL")` for migrations
 3. Set `DATABASE_URL` (and `DIRECT_URL`) to your Neon/Postgres URLs
-4. `bunx prisma db push`
+4. `bunx prisma migrate deploy` (or `db push` locally)
 
 ## Local run
 
 ```bash
 bun install          # or npm install
-cp .env.example .env # DATABASE_URL=file:./dev.db already fine
-bunx prisma db push
+cp .env.example .env
+bunx prisma migrate deploy
 bun run dev
 ```
 
@@ -76,24 +81,30 @@ Smoke path:
 1. Sign up (email + password ≥ 8 chars)
 2. New project → paste a brief ≥ 20 chars
 3. Confirm credit cost shown → Generate
-4. Open result → download MP4 (if ffmpeg) and/or asset zip
-5. Billing shows Stripe config notice until keys are set (Checkout returns **503**)
+4. Open result → **download MP4** (audio + burned-in captions). Asset zip is optional.
+5. Without `OPENAI_API_KEY`, the MP4 still renders with a beep track + captions (honest UI note).
+6. Billing shows Stripe config notice until keys are set (Checkout returns **503**)
 
-## Deploy notes (do not auto-deploy)
+Local render check (no server):
 
-- Push this repo to GitHub (`jaffainit/docbrief`)
-- On Vercel (when you choose): set env vars, use Neon Postgres (switch Prisma provider), link Blob only if you later move uploads off local disk
-- Point Stripe webhook to `https://YOUR_HOST/api/billing/webhook`
-- Create two Stripe Prices: Starter $12/mo recurring, Creator $36/mo recurring
-- `postinstall` runs `prisma generate`
-- Serverless: ffmpeg binary is copied to `/tmp` when needed (VecClip pattern)
+```bash
+bun run smoke:render
+```
 
-**This MVP was built for local run. No Vercel deploy, no custom domain, no spend from this build.**
+Writes a real `docbrief.mp4` under `uploads/smoke-local/` and exits non-zero if mux failed.
 
-## Ready-for-deploy ask (suggested wording)
+## Deploy
 
-> DocBrief MVP is on GitHub and runs locally. When you want production: create Neon Postgres + Stripe Prices (Starter $12, Creator $36), set env on Vercel, switch Prisma to postgresql, deploy — I will not spend or attach a custom domain unless you say so.
+- Repo: `jaffainit/docbrief`
+- Prod: https://docbrief-peach.vercel.app
+- Vercel: Neon Postgres, Blob store, Stripe + OpenAI env as configured
+- `postinstall` runs `prisma generate`; `build` runs `prisma migrate deploy`
+- Serverless: ffmpeg binary is copied to `/tmp` (VecClip pattern); caption font is copied to `/tmp`
+- Function bundle includes `@ffmpeg-installer/linux-x64` + `assets/fonts` via `outputFileTracingIncludes`
+- Generate route: `maxDuration` 120s
 
 ## License
 
 Private / product code for WedgeWerks™ · DocBrief.
+
+Liberation Sans is SIL Open Font License 1.1 — see `assets/fonts/LICENSE`.

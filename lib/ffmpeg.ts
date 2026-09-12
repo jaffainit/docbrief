@@ -20,11 +20,7 @@ function installerPath(): string | null {
       path?: string;
       default?: { path: string };
     };
-    return (
-      ffmpegInstaller.path ||
-      ffmpegInstaller.default?.path ||
-      null
-    );
+    return ffmpegInstaller.path || ffmpegInstaller.default?.path || null;
   } catch {
     return null;
   }
@@ -78,4 +74,35 @@ export async function runFfmpeg(args: string[], timeoutMs = 180000) {
     timeout: timeoutMs,
     maxBuffer: 40 * 1024 * 1024,
   });
+}
+
+/** Escape a filesystem path for use inside an ffmpeg filtergraph. */
+export function escapeFilterPath(p: string): string {
+  return p.replace(/\\/g, "/").replace(/:/g, "\\:").replace(/'/g, "\\'");
+}
+
+/** Probe duration from ffmpeg stderr (no ffprobe binary). */
+export async function probeDuration(filePath: string): Promise<number | null> {
+  try {
+    await runFfmpeg(["-i", filePath], 20000);
+  } catch (e: unknown) {
+    const err = e as { stderr?: string; message?: string };
+    const stderr = String(err.stderr || err.message || "");
+    const m = stderr.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
+    if (m) {
+      const sec = Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]);
+      if (Number.isFinite(sec) && sec > 0) return sec;
+    }
+  }
+  return null;
+}
+
+export function isRealMp4(filePath: string): boolean {
+  if (!fs.existsSync(filePath)) return false;
+  if (fs.statSync(filePath).size < 2000) return false;
+  const fd = fs.openSync(filePath, "r");
+  const buf = Buffer.alloc(12);
+  fs.readSync(fd, buf, 0, 12, 0);
+  fs.closeSync(fd);
+  return buf.toString("ascii", 4, 8) === "ftyp";
 }

@@ -12,6 +12,7 @@ const ALLOWED = new Set([
   "captions.vtt",
   "voiceover.mp3",
   "voiceover-silent.wav",
+  "voiceover-beep.wav",
   "docbrief.mp4",
   "docbrief-assets.zip",
   "still-1.png",
@@ -37,7 +38,7 @@ export async function GET(
   const url = new URL(req.url);
   const file = url.searchParams.get("file") || "docbrief-assets.zip";
   const base = path.basename(file);
-  if (!ALLOWED.has(base) && !/^still-\d+\.png$/.test(base)) {
+  if (!ALLOWED.has(base) && !/^still-\d+\.png$/.test(base) && !/^captioned-\d+\.png$/.test(base)) {
     return NextResponse.json({ error: "File not allowed" }, { status: 400 });
   }
 

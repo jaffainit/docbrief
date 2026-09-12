@@ -1,18 +1,20 @@
 /**
- * DocBrief generate pipeline (honest MVP):
+ * DocBrief generate pipeline:
  * 1. Polish script (OpenAI if key else template polish)
- * 2. TTS (OpenAI audio/speech if key else silent placeholder note)
+ * 2. TTS (OpenAI audio/speech if key else beep+silence placeholder)
  * 3. 3–5 B-roll placeholder stills (sharp gradient + caption)
  * 4. Captions .srt / .vtt from script sentences
- * 5. Mux MP4 with ffmpeg if available; else zip assets
- * 6. Caller deducts credits
+ * 5. Mux MP4 (stills + audio + burned-in captions) — primary success path
+ * 6. Zip of assets is secondary; zip-only only if ffmpeg is completely unavailable
+ * 7. Caller deducts credits
  */
 import fs from "fs";
 import path from "path";
 import JSZip from "jszip";
 import sharp from "sharp";
 import { projectDir } from "./paths";
-import { ffmpegAvailable, runFfmpeg } from "./ffmpeg";
+import { ffmpegAvailable, probeDuration } from "./ffmpeg";
+import { renderSlideshowMp4 } from "./render";
 
 export type GenerateResult = {
   scriptMd: string;
@@ -25,6 +27,9 @@ export type GenerateResult = {
   captionVtt: string;
 };
 
+const MAX_SENTENCES = 8;
+const MAX_AUDIO_SEC = 45;
+
 function sentencesFromScript(script: string): string[] {
   const body = script
     .replace(/^#.+$/gm, "")
@@ -35,7 +40,8 @@ function sentencesFromScript(script: string): string[] {
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim())
     .filter((s) => s.length > 12);
-  return parts.length ? parts : [body.slice(0, 200) || "DocBrief short documentary."];
+  const all = parts.length ? parts : [body.slice(0, 200) || "DocBrief short documentary."];
+  return all.slice(0, MAX_SENTENCES);
 }
 
 function templatePolish(brief: string): string {
@@ -102,7 +108,7 @@ async function openaiTts(text: string, outPath: string): Promise<boolean> {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return false;
   try {
-    const clipped = text.replace(/[#*_`]/g, "").slice(0, 4000);
+    const clipped = text.replace(/[#*_`]/g, "").slice(0, 900);
     const res = await fetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
       headers: {
@@ -125,10 +131,10 @@ async function openaiTts(text: string, outPath: string): Promise<boolean> {
   }
 }
 
-/** Minimal silent WAV (~2s) so zip always has an audio slot. */
-function writeSilentWav(outPath: string, seconds = 2) {
+/** Beep every ~4s plus silence so the MP4 has an honest placeholder track. */
+function writeBeepWav(outPath: string, seconds: number) {
   const sampleRate = 22050;
-  const numSamples = sampleRate * seconds;
+  const numSamples = Math.max(sampleRate * 2, Math.round(sampleRate * seconds));
   const dataSize = numSamples * 2;
   const buffer = Buffer.alloc(44 + dataSize);
   buffer.write("RIFF", 0);
@@ -144,7 +150,19 @@ function writeSilentWav(outPath: string, seconds = 2) {
   buffer.writeUInt16LE(16, 34);
   buffer.write("data", 36);
   buffer.writeUInt32LE(dataSize, 40);
-  // samples already zeroed
+  const beepHz = 880;
+  const beepLen = Math.round(sampleRate * 0.12);
+  const period = Math.round(sampleRate * 4);
+  for (let i = 0; i < numSamples; i++) {
+    const pos = i % period;
+    let sample = 0;
+    if (pos < beepLen) {
+      sample = Math.round(
+        Math.sin((2 * Math.PI * beepHz * pos) / sampleRate) * 0.32 * 32767,
+      );
+    }
+    buffer.writeInt16LE(sample, 44 + i * 2);
+  }
   fs.writeFileSync(outPath, buffer);
 }
 
@@ -160,14 +178,20 @@ function formatVttTime(sec: number): string {
   return formatSrtTime(sec).replace(",", ".");
 }
 
-function buildCaptions(sentences: string[]): { srt: string; vtt: string; duration: number } {
-  const per = 3.5;
+function buildCaptions(
+  sentences: string[],
+  totalDuration: number,
+): { srt: string; vtt: string; duration: number } {
+  const weights = sentences.map((s) => Math.max(s.length, 16));
+  const sum = weights.reduce((a, b) => a + b, 0) || 1;
+  const duration = Math.max(totalDuration, 6);
   let t = 0;
   const srtLines: string[] = [];
   const vttLines: string[] = ["WEBVTT", ""];
   sentences.forEach((sent, i) => {
     const start = t;
-    const end = t + per;
+    const slice = duration * (weights[i] / sum);
+    const end = i === sentences.length - 1 ? duration : t + slice;
     srtLines.push(String(i + 1));
     srtLines.push(`${formatSrtTime(start)} --> ${formatSrtTime(end)}`);
     srtLines.push(sent);
@@ -177,7 +201,36 @@ function buildCaptions(sentences: string[]): { srt: string; vtt: string; duratio
     vttLines.push("");
     t = end;
   });
-  return { srt: srtLines.join("\n"), vtt: vttLines.join("\n"), duration: Math.max(t, 6) };
+  return { srt: srtLines.join("\n"), vtt: vttLines.join("\n"), duration };
+}
+
+function wrapCaption(text: string, maxChars: number, maxLines: number): string[] {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let cur = "";
+  for (const w of words) {
+    const next = cur ? `${cur} ${w}` : w;
+    if (next.length > maxChars && cur) {
+      lines.push(cur);
+      cur = w;
+      if (lines.length >= maxLines) {
+        cur = "";
+        break;
+      }
+    } else {
+      cur = next;
+    }
+  }
+  if (cur && lines.length < maxLines) lines.push(cur);
+  return lines.slice(0, maxLines);
+}
+
+function escapeXml(s: string) {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 async function makeStill(
@@ -205,12 +258,22 @@ async function makeStill(
   await sharp(Buffer.from(svg)).png().toFile(outPath);
 }
 
-function escapeXml(s: string) {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+async function burnCaptionBar(srcPng: string, destPng: string, caption: string) {
+  const lines = wrapCaption(caption, 52, 2);
+  const barH = 64 + (lines.length - 1) * 28;
+  const lineSvg = lines
+    .map(
+      (ln, i) =>
+        `<text x="640" y="${720 - barH + 38 + i * 28}" text-anchor="middle" font-family="Arial, Liberation Sans, sans-serif" font-size="22" font-weight="600" fill="#f8fafc">${escapeXml(ln)}</text>`,
+    )
+    .join("");
+  const overlay = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1280" height="720" xmlns="http://www.w3.org/2000/svg">
+  <rect x="80" y="${720 - barH - 24}" width="1120" height="${barH}" rx="8" fill="rgba(0,0,0,0.72)"/>
+  ${lineSvg}
+</svg>`;
+  const overlayPng = await sharp(Buffer.from(overlay)).png().toBuffer();
+  await sharp(srcPng).composite([{ input: overlayPng, top: 0, left: 0 }]).png().toFile(destPng);
 }
 
 const STILL_COLORS: [string, string][] = [
@@ -232,14 +295,9 @@ export async function runGenerate(opts: {
   fs.writeFileSync(scriptPath, polished, "utf8");
 
   const sentences = sentencesFromScript(polished);
-  const { srt, vtt, duration } = buildCaptions(sentences);
-  const srtPath = path.join(dir, "captions.srt");
-  const vttPath = path.join(dir, "captions.vtt");
-  fs.writeFileSync(srtPath, srt, "utf8");
-  fs.writeFileSync(vttPath, vtt, "utf8");
+  const estimated = Math.min(MAX_AUDIO_SEC, Math.max(6, sentences.length * 3.5));
 
-  // Stills
-  const stillCount = Math.min(5, Math.max(3, Math.ceil(sentences.length / 3)));
+  const stillCount = Math.min(5, Math.max(3, Math.ceil(sentences.length / 2)));
   const stillPaths: string[] = [];
   for (let i = 0; i < stillCount; i++) {
     const label = sentences[i % sentences.length].slice(0, 72);
@@ -248,70 +306,89 @@ export async function runGenerate(opts: {
     stillPaths.push(p);
   }
 
-  // Audio
   const mp3Path = path.join(dir, "voiceover.mp3");
-  const wavPath = path.join(dir, "voiceover-silent.wav");
+  const wavPath = path.join(dir, "voiceover-beep.wav");
   let audioPath: string | null = null;
   let audioIsTts = false;
-  const ttsOk = await openaiTts(polished, mp3Path);
+  const voText = sentences.join(" ");
+  const ttsOk = await openaiTts(voText, mp3Path);
   if (ttsOk) {
     audioPath = mp3Path;
     audioIsTts = true;
   } else {
-    writeSilentWav(wavPath, Math.min(duration, 30));
+    writeBeepWav(wavPath, estimated);
     audioPath = wavPath;
   }
 
-  // Try MP4 mux
+  let audioDur = (await probeDuration(audioPath)) ?? estimated;
+  if (!Number.isFinite(audioDur) || audioDur < 2) audioDur = estimated;
+  audioDur = Math.min(Math.max(audioDur, 6), MAX_AUDIO_SEC);
+  if (!audioIsTts) {
+    writeBeepWav(wavPath, audioDur);
+    audioPath = wavPath;
+  }
+
+  const { srt, vtt, duration } = buildCaptions(sentences, audioDur);
+  const srtPath = path.join(dir, "captions.srt");
+  const vttPath = path.join(dir, "captions.vtt");
+  fs.writeFileSync(srtPath, srt, "utf8");
+  fs.writeFileSync(vttPath, vtt, "utf8");
+
   let videoPath: string | null = null;
   let zipPath: string | null = null;
   let renderNote = "";
+  let muxMethod = "";
 
   if (ffmpegAvailable() && stillPaths.length > 0 && audioPath) {
-    try {
-      const outMp4 = path.join(dir, "docbrief.mp4");
-      const listFile = path.join(dir, "stills.txt");
-      const perStill = Math.max(2, duration / stillPaths.length);
-      const listBody = stillPaths
-        .map((p) => `file '${p.replace(/'/g, "'\\''")}'\nduration ${perStill.toFixed(2)}`)
-        .join("\n");
-      // concat demuxer needs last file repeated without duration
-      const last = stillPaths[stillPaths.length - 1].replace(/'/g, "'\\''");
-      fs.writeFileSync(listFile, listBody + `\nfile '${last}'\n`, "utf8");
+    const outMp4 = path.join(dir, "docbrief.mp4");
+    let mux = await renderSlideshowMp4({
+      stillPaths,
+      audioPath,
+      srtPath,
+      outPath: outMp4,
+      durationSec: duration,
+      workDir: dir,
+      drawtextCaption: sentences[0],
+    });
 
-      await runFfmpeg([
-        "-y",
-        "-f",
-        "concat",
-        "-safe",
-        "0",
-        "-i",
-        listFile,
-        "-i",
-        audioPath,
-        "-c:v",
-        "libx264",
-        "-pix_fmt",
-        "yuv420p",
-        "-c:a",
-        "aac",
-        "-shortest",
-        "-movflags",
-        "+faststart",
-        outMp4,
-      ]);
-      if (fs.existsSync(outMp4) && fs.statSync(outMp4).size > 1000) {
-        videoPath = outMp4;
-        renderNote = audioIsTts
-          ? "MP4 muxed with TTS voiceover + B-roll placeholder stills."
-          : "MP4 muxed with silent/placeholder audio (no OPENAI_API_KEY TTS) + B-roll placeholder stills.";
+    if (!mux.ok || mux.method === "concat+audio") {
+      const captioned: string[] = [];
+      for (let i = 0; i < sentences.length; i++) {
+        const src = stillPaths[i % stillPaths.length];
+        const dest = path.join(dir, `captioned-${i + 1}.png`);
+        await burnCaptionBar(src, dest, sentences[i]);
+        captioned.push(dest);
       }
-    } catch (e) {
-      console.warn("[docbrief generate] ffmpeg mux failed:", e);
+      mux = await renderSlideshowMp4({
+        stillPaths: captioned,
+        audioPath,
+        srtPath,
+        outPath: outMp4,
+        durationSec: duration,
+        workDir: dir,
+      });
+      if (mux.ok) muxMethod = `${mux.method}+sharp-captions`;
+    } else if (mux.ok) {
+      muxMethod = mux.method;
+    }
+
+    if (mux.ok) {
+      videoPath = outMp4;
+      const captionHow = muxMethod.includes("subtitles")
+        ? "burned-in captions (ffmpeg subtitles)"
+        : muxMethod.includes("drawtext")
+          ? "burned-in captions (ffmpeg drawtext)"
+          : muxMethod.includes("sharp")
+            ? "burned-in captions (composited on stills)"
+            : "captions (see SRT in the asset zip)";
+      renderNote = audioIsTts
+        ? `MP4 with TTS voiceover, B-roll placeholder stills, and ${captionHow}.`
+        : `MP4 with placeholder beep track (no OPENAI_API_KEY TTS), B-roll placeholder stills, and ${captionHow}.`;
+    } else {
+      console.warn("[docbrief generate] mux failed:", mux.error);
     }
   }
 
-  // Always also build a zip of assets (and use as primary download if no MP4)
   const zip = new JSZip();
   zip.file("script.md", polished);
   zip.file("captions.srt", srt);
@@ -319,16 +396,17 @@ export async function runGenerate(opts: {
   zip.file(
     "README.txt",
     [
-      "DocBrief asset pack",
-      "===================",
+      "DocBrief asset pack (secondary download)",
+      "======================================",
       "",
       videoPath
-        ? "An MP4 was also produced (docbrief.mp4 in the project download)."
-        : "ffmpeg was unavailable or mux failed — this zip is your deliverable.",
+        ? "Primary deliverable is docbrief.mp4 (also on the project page)."
+        : "ffmpeg was unavailable or every mux attempt failed — this zip is the fallback.",
       audioIsTts
         ? "voiceover.mp3 = OpenAI TTS"
-        : "voiceover-silent.wav = silent placeholder (set OPENAI_API_KEY for TTS)",
-      "still-N.png = B-roll PLACEHOLDERS (solid/gradient + caption) — replace with real footage",
+        : "voiceover-beep.wav = placeholder beep track (set OPENAI_API_KEY for TTS)",
+      "still-N.png = B-roll PLACEHOLDERS (gradient + label) — replace with real footage",
+      "captions.srt / captions.vtt = timed captions (also burned into the MP4 when ffmpeg works)",
       "",
       "DocBrief does not do character-consistent multi-cast GPU video, Seedance/Kling, or YouTube publish.",
       "A WedgeWerks™ product.",
@@ -350,8 +428,8 @@ export async function runGenerate(opts: {
 
   if (!videoPath) {
     renderNote = ffmpegAvailable()
-      ? "ffmpeg present but mux failed — download the asset zip (script, audio, stills, captions)."
-      : "ffmpeg not available — download the asset zip (script, audio/placeholder, stills, captions). Install @ffmpeg-installer/ffmpeg or system ffmpeg for MP4.";
+      ? "ffmpeg present but every mux attempt failed — download the asset zip (script, audio, stills, captions). MP4 is the intended primary path."
+      : "ffmpeg not available — download the asset zip only. Install @ffmpeg-installer/ffmpeg or system ffmpeg for MP4.";
   }
 
   return {
