@@ -14,10 +14,10 @@ export default async function NewProjectPage() {
       </Link>
       <h1 className="mt-4 text-2xl font-semibold text-slate-900">New documentary brief</h1>
       <p className="mt-2 text-slate-600">
-        Cost and credits are shown before generate. Free plan = 1 short render.
+        Cost, balance, and after-balance are shown before generate. Free plan = 1 short render.
       </p>
       <div className="mt-6">
-        <NewProjectForm credits={user.credits} />
+        <NewProjectForm credits={user.credits} plan={user.plan} />
       </div>
     </div>
   );

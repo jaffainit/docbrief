@@ -13,7 +13,7 @@ Paste a topic or rough script → polished voiceover script + TTS (when configur
 - Landing + pricing: **Free** (1 short render), **Starter $12/mo** (10 credits), **Creator $36/mo** (40 credits)
 - Email + bcrypt password auth (min 8 chars); httpOnly session cookie (`docbrief_uid`, `Secure` in production); sessions require `passwordHash`
 - Dashboard of projects
-- New project: brief → generate with **cost/credits shown before generate**
+- New project: brief → generate with **cost / balance / after-balance shown before generate** (same on re-generate)
 - Project result: script preview, **MP4 primary download**, optional asset zip
 - Billing + Stripe Checkout (wired; 503 + config notice when keys missing — **no stub free upgrade**)
 - Stripe Customer Portal (`/api/billing/portal`) for paid users — manage payment method / cancel

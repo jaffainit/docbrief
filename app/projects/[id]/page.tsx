@@ -31,7 +31,7 @@ export default async function ProjectPage({
           </p>
         </div>
         {project.status !== "running" && (
-          <GenerateAgainButton projectId={project.id} credits={user.credits} />
+          <GenerateAgainButton projectId={project.id} credits={user.credits} plan={user.plan} />
         )}
       </div>
 
