@@ -13,10 +13,38 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = "https://docbrief.wedgewerks.win";
+const title = "DocBrief — Short YouTube documentaries without an editor";
+const description =
+  "A WedgeWerks™ product — brief → polished script, TTS voiceover, B-roll placeholders, captions, downloadable MP4.";
+
 export const metadata: Metadata = {
-  title: "DocBrief — Short YouTube documentaries without an editor",
-  description:
-    "A WedgeWerks™ product — brief → polished script, TTS voiceover, B-roll placeholders, captions, downloadable MP4 or asset zip.",
+  metadataBase: new URL(siteUrl),
+  title,
+  description,
+  applicationName: "DocBrief",
+  authors: [{ name: "WedgeWerks" }],
+  keywords: [
+    "YouTube documentary",
+    "faceless YouTube",
+    "TTS captions",
+    "short documentary",
+    "WedgeWerks",
+  ],
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    url: siteUrl,
+    siteName: "DocBrief",
+    title,
+    description,
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
