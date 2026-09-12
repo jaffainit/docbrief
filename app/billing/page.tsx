@@ -22,7 +22,7 @@ export default async function BillingPage() {
           {limits.name}).
         </p>
         <div className="mt-4">
-          <BillingClient plan={user.plan} credits={user.credits} stripeReady={live} />
+          <BillingClient plan={user.plan} credits={user.credits} stripeReady={live} hasStripeCustomer={Boolean(user.stripeCustomerId)} />
         </div>
       </div>
     </div>

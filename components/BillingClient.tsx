@@ -6,13 +6,15 @@ export function BillingClient({
   plan,
   credits,
   stripeReady,
+  hasStripeCustomer,
 }: {
   plan: string;
   credits: number;
   stripeReady: boolean;
+  hasStripeCustomer: boolean;
 }) {
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState<"starter" | "creator" | null>(null);
+  const [loading, setLoading] = useState<"starter" | "creator" | "portal" | null>(null);
 
   async function checkout(target: "starter" | "creator") {
     setError("");
@@ -26,6 +28,19 @@ export function BillingClient({
     setLoading(null);
     if (!res.ok) {
       setError(data.message || data.error || "Checkout unavailable");
+      return;
+    }
+    if (data.url) window.location.href = data.url;
+  }
+
+  async function openPortal() {
+    setError("");
+    setLoading("portal");
+    const res = await fetch("/api/billing/portal", { method: "POST" });
+    const data = await res.json();
+    setLoading(null);
+    if (!res.ok) {
+      setError(data.message || data.error || "Portal unavailable");
       return;
     }
     if (data.url) window.location.href = data.url;
@@ -67,7 +82,22 @@ export function BillingClient({
         >
           {loading === "creator" ? "Redirecting…" : "Upgrade Creator — $36/mo"}
         </button>
+        {hasStripeCustomer && (
+          <button
+            type="button"
+            disabled={!stripeReady || loading !== null}
+            onClick={() => openPortal()}
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
+            {loading === "portal" ? "Opening…" : "Manage billing"}
+          </button>
+        )}
       </div>
+      {hasStripeCustomer && (
+        <p className="text-xs text-slate-500">
+          Manage billing opens the Stripe Customer Portal to update payment method or cancel.
+        </p>
+      )}
     </div>
   );
 }

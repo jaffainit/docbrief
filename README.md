@@ -16,6 +16,7 @@ Paste a topic or rough script → polished voiceover script + TTS (when configur
 - New project: brief → generate with **cost/credits shown before generate**
 - Project result: script preview, **MP4 primary download**, optional asset zip
 - Billing + Stripe Checkout (wired; 503 + config notice when keys missing — **no stub free upgrade**)
+- Stripe Customer Portal (`/api/billing/portal`) for paid users — manage payment method / cancel
 - Webhook credit sync: `checkout.session.completed` + `invoice.paid` set plan credits (Starter 10 / Creator 40); cancel returns Free (1)
 - Generate pipeline:
   1. Polish/expand brief into narrated script with OpenAI `gpt-4o-mini` if `OPENAI_API_KEY`, else template polish (fallback logged)
