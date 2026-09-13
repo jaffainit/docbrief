@@ -58,7 +58,8 @@ export async function POST(
   });
   if (!project) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (user.credits < CREDITS_PER_RENDER) {
+  const ownerUnlimited = user.plan === "owner";
+  if (!ownerUnlimited && user.credits < CREDITS_PER_RENDER) {
     return NextResponse.json(
       {
         error: "Insufficient credits",
@@ -88,8 +89,8 @@ export async function POST(
       durableUrl(id, result.zipPath),
     ]);
 
-    const [updatedProject] = await prisma.$transaction([
-      prisma.project.update({
+    const updatedProject = await prisma.$transaction(async (tx) => {
+      const projectUpdate = await tx.project.update({
         where: { id },
         data: {
           status: "done",
@@ -98,14 +99,17 @@ export async function POST(
           videoUrl,
           zipUrl,
           renderNote: result.renderNote,
-          creditsUsed: CREDITS_PER_RENDER,
+          creditsUsed: ownerUnlimited ? 0 : CREDITS_PER_RENDER,
         },
-      }),
-      prisma.user.update({
-        where: { id: user.id },
-        data: { credits: { decrement: CREDITS_PER_RENDER } },
-      }),
-    ]);
+      });
+      if (!ownerUnlimited) {
+        await tx.user.update({
+          where: { id: user.id },
+          data: { credits: { decrement: CREDITS_PER_RENDER } },
+        });
+      }
+      return projectUpdate;
+    });
 
     const fresh = await prisma.user.findUnique({ where: { id: user.id } });
     return NextResponse.json({

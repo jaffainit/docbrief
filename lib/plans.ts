@@ -34,6 +34,13 @@ export const PLANS = {
       "Priority when OpenAI keys are set",
     ],
   },
+  owner: {
+    name: "Owner",
+    price: 0,
+    credits: 1_000_000,
+    blurb: "Internal",
+    features: ["Unlimited renders"],
+  },
 } as const;
 
 export type PlanId = keyof typeof PLANS;
