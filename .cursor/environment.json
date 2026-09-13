@@ -1,12 +1,12 @@
 {
   "name": "DocBrief",
   "user": "ubuntu",
-  "install": "bash .cursor/install.sh",
-  "start": "bash .cursor/start.sh",
+  "install": "bash /agent/repos/docbrief/.cursor/install.sh",
+  "start": "bash /agent/repos/docbrief/.cursor/start.sh",
   "terminals": [
     {
       "name": "dev",
-      "command": "export PATH=\"$HOME/.bun/bin:$PATH\" && bun run dev"
+      "command": "cd /agent/repos/docbrief && export PATH=\"$HOME/.bun/bin:$PATH\" && bun run dev"
     }
   ]
 }
