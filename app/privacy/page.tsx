@@ -23,7 +23,14 @@ export default function PrivacyPage() {
           <p className="mt-2 text-sm leading-relaxed">
             DocBrief is a WedgeWerks™ product that helps creators turn a written brief into a
             short documentary-style script, voiceover, captions, and downloadable video assets.
-            Contact: the operator listed on wedgewerks.win / docbrief.wedgewerks.win.
+            The service is operated by WedgeWerks and available at{" "}
+            <a
+              href="https://docbrief.wedgewerks.win"
+              className="text-indigo-700 hover:underline"
+            >
+              https://docbrief.wedgewerks.win
+            </a>
+            .
           </p>
         </section>
 
@@ -60,8 +67,12 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-semibold text-slate-900">Retention & deletion</h2>
           <p className="mt-2 text-sm leading-relaxed">
             We keep account and project data while your account is active and as needed for
-            billing, security, and legal obligations. Contact us to request account deletion;
-            we will remove or anonymize personal data that is no longer required.
+            billing, security, and legal obligations. To request account deletion or data removal,
+            contact{" "}
+            <a href="mailto:admin@wedgewerks.win" className="text-indigo-700 hover:underline">
+              admin@wedgewerks.win
+            </a>
+            ; we will remove or anonymize personal data that is no longer required.
           </p>
         </section>
 
@@ -76,8 +87,15 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-lg font-semibold text-slate-900">Contact</h2>
           <p className="mt-2 text-sm leading-relaxed">
-            Questions about privacy: reach out via the WedgeWerks / DocBrief site contact channel.
-            See also our{" "}
+            Questions about privacy or general inquiries: contact{" "}
+            <a href="mailto:info@wedgewerks.win" className="text-indigo-700 hover:underline">
+              info@wedgewerks.win
+            </a>
+            . For account deletion or legal matters, contact{" "}
+            <a href="mailto:admin@wedgewerks.win" className="text-indigo-700 hover:underline">
+              admin@wedgewerks.win
+            </a>
+            . See also our{" "}
             <Link href="/terms" className="text-indigo-700 hover:underline">
               Terms of Service
             </Link>

@@ -22,7 +22,14 @@ export default function TermsPage() {
           <h2 className="text-lg font-semibold text-slate-900">Agreement</h2>
           <p className="mt-2 text-sm leading-relaxed">
             By creating an account or using DocBrief (a WedgeWerks™ product), you agree to these
-            Terms. If you do not agree, do not use the service.
+            Terms. If you do not agree, do not use the service. The service is available at{" "}
+            <a
+              href="https://docbrief.wedgewerks.win"
+              className="text-indigo-700 hover:underline"
+            >
+              https://docbrief.wedgewerks.win
+            </a>
+            .
           </p>
         </section>
 
@@ -92,6 +99,21 @@ export default function TermsPage() {
             <Link href="/privacy" className="text-indigo-700 hover:underline">
               Privacy Policy
             </Link>
+            .
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-lg font-semibold text-slate-900">Contact</h2>
+          <p className="mt-2 text-sm leading-relaxed">
+            General inquiries: contact{" "}
+            <a href="mailto:info@wedgewerks.win" className="text-indigo-700 hover:underline">
+              info@wedgewerks.win
+            </a>
+            . Legal matters or account deletion requests: contact{" "}
+            <a href="mailto:admin@wedgewerks.win" className="text-indigo-700 hover:underline">
+              admin@wedgewerks.win
+            </a>
             .
           </p>
         </section>
