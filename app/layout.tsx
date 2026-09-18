@@ -66,6 +66,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <a href="/terms" className="hover:text-slate-600 hover:underline">
               Terms
             </a>
+            <span aria-hidden="true">·</span>
+            <a href="mailto:info@wedgewerks.win" className="hover:text-slate-600 hover:underline">
+              Contact
+            </a>
           </p>
         </footer>
       </body>
