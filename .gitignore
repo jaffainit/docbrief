@@ -50,3 +50,7 @@ next-env.d.ts
 *.db-journal
 .stripe_prices.json
 .neon_claim.json
+
+# Next.js auto-generated agent rules
+AGENTS.md
+CLAUDE.md
